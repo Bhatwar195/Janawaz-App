@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Live Map – Janawaz{% endblock %}
+{% block extra_css %}
+<style>
+  .map-page-container { display: flex; height: calc(100vh - 70px); }
+  #fullMap { flex: 1; }
+  .map-sidebar { width: 340px; overflow-y: auto; background: var(--bg-card); border-left: 1px solid var(--border); padding: 1rem; }
+  .filter-group { margin-bottom: 1rem; }
+  .filter-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .filter-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; }
+  .filter-btn { padding: 0.3rem 0.75rem; border-radius: 20px; border: 1px solid var(--border); background: var(--bg); font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .sidebar-issue { padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s; }
+  .sidebar-issue:hover { border-color: var(--primary); background: var(--bg-hover); }
+  .sidebar-issue h4 { font-size: 0.9rem; margin: 0 0 0.25rem; }
+  .sidebar-issue p { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+  .legend { margin-top: 1rem; padding: 0.75rem; background: var(--bg); border-radius: 8px; }
+  .legend h4 { font-size: 0.82rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; margin-bottom: 0.3rem; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+  @media (max-width: 768px) { .map-page-container { flex-direction: column; } .map-sidebar { width: 100%; height: 240px; border-left: none; border-top: 1px solid var(--border); } #fullMap { flex: 1; min-height: 400px; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="map-page-container">
+    <div id="fullMap"></div>
+    <div class="map-sidebar">
+        <h3 style="margin-bottom:1rem; font-size:1rem;">Filter Issues</h3>
+        <div class="filter-group">
+            <label>Status</label>
+            <div class="filter-btns">
+                <button class="filter-btn active" data-filter="status" data-value="all">All</button>
+                <button class="filter-btn" data-filter="status" data-value="Pending">Pending</button>
+                <button class="filter-btn" data-filter="status" data-value="In Progress">In Progress</button>
+                <button class="filter-btn" data-filter="status" data-value="Resolved">Resolved</button>
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>Category</label>
+            <div class="filter-btns">
+                <button class="filter-btn active" data-filter="category" data-value="all">All</button>
+                <button class="filter-btn" data-filter="category" data-value="Pothole">Pothole</button>
+                <button class="filter-btn" data-filter="category" data-value="Garbage">Garbage</button>
+                <button class="filter-btn" data-filter="category" data-value="Water Issue">Water</button>
+                <button class="filter-btn" data-filter="category" data-value="Electricity">Electric</button>
+                <button class="filter-btn" data-filter="category" data-value="Other">Other</button>
+            </div>
+        </div>
+        <div class="legend">
+            <h4>Legend</h4>
+            <div class="legend-item"><div class="legend-dot" style="background:#EF4444"></div> Pending</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div> In Progress</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#10B981"></div> Resolved</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#6366F1;width:18px;height:18px;border-radius:3px"></div> Cluster</div>
+        </div>
+        <div style="margin-top:1rem;">
+            <h4 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Issues List</h4>
+            <div id="sidebarList" style="margin-top:0.5rem;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const map = L.map('fullMap').setView([18.5204, 73.8567], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+}).addTo(map);
+
+let allIssues = [], allMarkers = [];
+let activeFilters = { status: 'all', category: 'all' };
+const statusColors = { 'Pending': '#EF4444', 'In Progress': '#F59E0B', 'Resolved': '#10B981' };
+
+function makeMarkerIcon(color, size=14) {
+    return L.divIcon({
+        className: '',
+        html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
+        iconSize: [size, size], iconAnchor: [size/2, size/2]
+    });
+}
+
+function renderMarkers() {
+    allMarkers.forEach(m => map.removeLayer(m));
+    allMarkers = [];
+    const list = document.getElementById('sidebarList');
+    list.innerHTML = '';
+    const filtered = allIssues.filter(i =>
+        (activeFilters.status === 'all' || i.status === activeFilters.status) &&
+        (activeFilters.category === 'all' || i.category === activeFilters.category)
+    );
+    filtered.forEach(issue => {
+        const color = statusColors[issue.status] || '#6B7280';
+        const marker = L.marker([issue.latitude, issue.longitude], { icon: makeMarkerIcon(color) });
+        marker.bindPopup(`<div style="min-width:200px"><b style="font-size:0.95rem">${issue.title}</b><br>
+            <span style="color:#6B7280;font-size:0.8rem">${issue.category} &bull; ${issue.status}</span><br>
+            <span style="font-size:0.8rem">${issue.address || ''}</span><br>
+            <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center">
+                <span style="font-size:0.8rem"><b>${issue.upvotes}</b> upvotes</span>
+                <a href="/complaint/${issue.id}" style="font-size:0.8rem;color:#1E3A8A;font-weight:600">View &rarr;</a>
+            </div></div>`);
+        marker.addTo(map);
+        allMarkers.push(marker);
+        const card = document.createElement('div');
+        card.className = 'sidebar-issue';
+        card.innerHTML = `<h4>${issue.title}</h4><p>${issue.category} &bull; ${issue.status} &bull; ${issue.upvotes} upvotes</p>`;
+        card.onclick = () => { map.setView([issue.latitude, issue.longitude], 16); marker.openPopup(); };
+        list.appendChild(card);
+    });
+    if (filtered.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No issues match the selected filters.</p>';
+    }
+}
+
+fetch('/api/issues').then(r => r.json()).then(issues => {
+    allIssues = issues;
+    renderMarkers();
+    if (issues.length > 0) {
+        map.fitBounds(issues.map(i => [i.latitude, i.longitude]), { padding: [30, 30] });
+    }
+});
+
+fetch('/api/clusters').then(r => r.json()).then(clusters => {
+    clusters.forEach(cl => {
+        const icon = L.divIcon({
+            className: '',
+            html: `<div style="background:#6366F1;color:white;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:700;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${cl.complaint_count}</div>`,
+            iconSize: [36, 24], iconAnchor: [18, 12]
+        });
+        L.marker([cl.center_lat, cl.center_lng], { icon })
+            .bindPopup(`<b>Hotspot Cluster</b><br>${cl.complaint_count} reports<br>Score: ${cl.score}`)
+            .addTo(map);
+    });
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const ft = this.dataset.filter;
+        document.querySelectorAll(`[data-filter="${ft}"]`).forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        activeFilters[ft] = this.dataset.value;
+        renderMarkers();
+    });
+});
+</script>
+{% endblock %}

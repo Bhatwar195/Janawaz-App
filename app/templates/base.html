@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Janawaz – Your City, Your Voice{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">J</span>
+                <span class="brand-text">Janawaz</span>
+            </a>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/" class="nav-link">Home</a></li>
+                <li><a href="/map" class="nav-link">Map</a></li>
+                {% if current_user %}
+                <li><a href="/report" class="nav-link">Report Issue</a></li>
+                <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
+                {% if current_user.is_admin %}
+                <li><a href="/admin" class="nav-link admin-link">Admin Panel</a></li>
+                {% endif %}
+                <li class="nav-user">
+                    <span class="user-name"><i class="fas fa-user-circle"></i> {{ current_user.name }}</span>
+                    <a href="/logout" class="nav-link logout-link">Logout</a>
+                </li>
+                {% else %}
+                <li><a href="/login" class="nav-link">Login</a></li>
+                <li><a href="/register" class="nav-btn">Register</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    {% if flashes %}
+    <div class="flash-container">
+        {% for f in flashes %}
+        <div class="flash flash-{{ f.category }}">
+            <i class="fas {% if f.category == 'success' %}fa-check-circle{% elif f.category == 'error' %}fa-times-circle{% else %}fa-info-circle{% endif %}"></i>
+            {{ f.message }}
+            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="brand-icon">J</span>
+                <span>Janawaz</span>
+                <p>Empowering citizens to improve their communities.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Quick Links</h4>
+                <a href="/">Home</a>
+                <a href="/map">Map</a>
+                <a href="/report">Report Issue</a>
+            </div>
+            <div class="footer-contact">
+                <h4>Contact</h4>
+                <p><i class="fas fa-envelope"></i> support@janawaz.in</p>
+                <p><i class="fas fa-phone"></i> +91 1800-JANAWAZ</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Janawaz. Built for citizens, by citizens.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

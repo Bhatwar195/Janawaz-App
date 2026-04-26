@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard – Janawaz{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-tachometer-alt"></i> My Dashboard</h1>
+        <p>Track all the issues you have reported.</p>
+    </div>
+    <div class="dashboard-stats">
+        <div class="dash-stat">
+            <div class="dash-stat-num">{{ complaints|length }}</div>
+            <div class="dash-stat-label">Total Reports</div>
+        </div>
+        <div class="dash-stat dash-stat-green">
+            <div class="dash-stat-num">{{ complaints|selectattr('status','equalto','Resolved')|list|length }}</div>
+            <div class="dash-stat-label">Resolved</div>
+        </div>
+        <div class="dash-stat dash-stat-yellow">
+            <div class="dash-stat-num">{{ complaints|selectattr('status','equalto','In Progress')|list|length }}</div>
+            <div class="dash-stat-label">In Progress</div>
+        </div>
+        <div class="dash-stat dash-stat-red">
+            <div class="dash-stat-num">{{ complaints|selectattr('status','equalto','Pending')|list|length }}</div>
+            <div class="dash-stat-label">Pending</div>
+        </div>
+    </div>
+    <div class="dashboard-actions">
+        <a href="/report" class="btn btn-primary"><i class="fas fa-plus"></i> Report New Issue</a>
+        <a href="/map" class="btn btn-outline"><i class="fas fa-map"></i> View Map</a>
+    </div>
+    {% if complaints %}
+    <div class="table-card">
+        <div class="table-header">
+            <h3>Your Reports</h3>
+            <input type="text" id="searchInput" placeholder="Search reports..." class="table-search">
+        </div>
+        <div class="table-responsive">
+            <table class="data-table" id="reportsTable">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Title</th><th>Category</th><th>Status</th>
+                        <th>Upvotes</th><th>Pressure</th><th>Date</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in complaints %}
+                    <tr>
+                        <td>{{ c.id }}</td>
+                        <td class="td-title">{{ c.title }}</td>
+                        <td><span class="cat-badge cat-{{ c.category|lower|replace(' ','') }}">{{ c.category }}</span></td>
+                        <td><span class="status-badge status-{{ c.status|lower|replace(' ','-') }}">{{ c.status }}</span></td>
+                        <td><i class="fas fa-arrow-up" style="color:var(--primary)"></i> {{ c.upvote_count() }}</td>
+                        <td>
+                            <div class="mini-bar-wrap">
+                                <div class="mini-bar" style="width:{{ [c.public_pressure_score, 100]|min }}%"></div>
+                                <span>{{ c.public_pressure_score }}</span>
+                            </div>
+                        </td>
+                        <td>{{ c.created_at.strftime('%d %b %Y') }}</td>
+                        <td><a href="/complaint/{{ c.id }}" class="btn btn-xs btn-primary">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-clipboard-list"></i>
+        <h3>No reports yet</h3>
+        <p>You haven't reported any issues yet. Help improve your city!</p>
+        <a href="/report" class="btn btn-primary">Report Your First Issue</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('searchInput')?.addEventListener('input', function() {
+    const term = this.value.toLowerCase();
+    document.querySelectorAll('#reportsTable tbody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

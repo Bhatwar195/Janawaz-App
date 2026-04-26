@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ complaint.title }} – Janawaz{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="breadcrumb">
+        <a href="/">Home</a>
+        <i class="fas fa-chevron-right"></i>
+        <a href="/map">Map</a>
+        <i class="fas fa-chevron-right"></i>
+        <span>Issue #{{ complaint.id }}</span>
+    </div>
+    <div class="detail-layout">
+        <div class="detail-main">
+            <div class="detail-card">
+                <div class="detail-header">
+                    <div class="detail-header-top">
+                        <span class="issue-category cat-badge cat-{{ complaint.category|lower|replace(' ','') }}">{{ complaint.category }}</span>
+                        <span class="issue-status status-{{ complaint.status|lower|replace(' ','-') }}">{{ complaint.status }}</span>
+                    </div>
+                    <h1 class="detail-title">{{ complaint.title }}</h1>
+                    <div class="detail-meta">
+                        <span><i class="fas fa-user"></i> {{ complaint.author.name }}</span>
+                        <span><i class="fas fa-calendar"></i> {{ complaint.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                        {% if complaint.address %}
+                        <span><i class="fas fa-map-marker-alt"></i> {{ complaint.address[:60] }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if complaint.image_filename %}
+                <div class="detail-image-wrap">
+                    <img src="{{ image_url }}" alt="Issue Photo" class="detail-image">
+                </div>
+                {% endif %}
+                <div class="detail-description">
+                    <h3>Description</h3>
+                    <p>{{ complaint.description }}</p>
+                </div>
+                <div class="detail-map-section">
+                    <h3>Location</h3>
+                    <div id="detailMap" class="detail-map"></div>
+                </div>
+            </div>
+
+            {% if complaint.escalations %}
+            <div class="detail-card">
+                <h3><i class="fas fa-level-up-alt"></i> Escalation History</h3>
+                {% for esc in complaint.escalations %}
+                <div class="escalation-item">
+                    <div class="esc-level">{{ esc.level }}</div>
+                    <div class="esc-details">
+                        <p class="esc-reason">{{ esc.reason }}</p>
+                        <span class="esc-date">{{ esc.created_at.strftime('%d %b %Y') }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if current_user %}
+            <div class="detail-card">
+                <h3><i class="fas fa-bullhorn"></i> Escalate This Issue</h3>
+                <p class="form-help">Not getting a response? Escalate to a higher authority.</p>
+                <form method="POST" action="/escalate/{{ complaint.id }}" class="escalate-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="level">Escalate To</label>
+                            <select name="level" id="level">
+                                <option value="Ward Officer">Ward Officer</option>
+                                <option value="Municipal Commissioner">Municipal Commissioner</option>
+                                <option value="District Collector">District Collector</option>
+                                <option value="State Authority">State Authority</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reason">Reason for Escalation</label>
+                        <textarea name="reason" id="reason" rows="3" placeholder="Explain why this needs to be escalated..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-level-up-alt"></i> Escalate Issue
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-sidebar">
+            <div class="sidebar-card pressure-card">
+                <h4>Public Pressure Score</h4>
+                <div class="pressure-score">{{ complaint.public_pressure_score }}</div>
+                <div class="pressure-bar-wrap">
+                    <div class="pressure-bar" style="width: {{ [complaint.public_pressure_score, 100] | min }}%"></div>
+                </div>
+                <p class="pressure-hint">Higher score = faster resolution</p>
+            </div>
+
+            <div class="sidebar-card upvote-card">
+                <div class="upvote-count">{{ complaint.upvote_count() }}</div>
+                <p>Citizens Support This</p>
+                {% if current_user %}
+                <form method="POST" action="/upvote/{{ complaint.id }}">
+                    <button type="submit" class="btn btn-full {% if user_upvoted %}btn-danger{% else %}btn-primary{% endif %}">
+                        <i class="fas fa-arrow-up"></i>
+                        {% if user_upvoted %}Remove Upvote{% else %}Upvote This Issue{% endif %}
+                    </button>
+                </form>
+                {% else %}
+                <a href="/login" class="btn btn-primary btn-full">Login to Upvote</a>
+                {% endif %}
+            </div>
+
+            <div class="sidebar-card">
+                <h4>Issue Information</h4>
+                <div class="info-row"><span class="info-label">Issue ID</span><span class="info-value">#{{ complaint.id }}</span></div>
+                <div class="info-row"><span class="info-label">Category</span><span class="info-value">{{ complaint.category }}</span></div>
+                <div class="info-row"><span class="info-label">Status</span><span class="info-value status-{{ complaint.status|lower|replace(' ','-') }}">{{ complaint.status }}</span></div>
+                {% if complaint.cluster_id %}
+                <div class="info-row"><span class="info-label">Cluster</span><span class="info-value">Hotspot #{{ complaint.cluster_id }}</span></div>
+                {% endif %}
+                <div class="info-row"><span class="info-label">Reported</span><span class="info-value">{{ complaint.created_at.strftime('%d %b %Y') }}</span></div>
+            </div>
+
+            <a href="/map" class="btn btn-outline btn-full"><i class="fas fa-map"></i> View on Map</a>
+            <a href="/" class="btn btn-ghost btn-full" style="margin-top:0.5rem;"><i class="fas fa-arrow-left"></i> Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const detailMap = L.map('detailMap').setView([{{ complaint.latitude }}, {{ complaint.longitude }}], 16);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(detailMap);
+L.marker([{{ complaint.latitude }}, {{ complaint.longitude }}], {
+    icon: L.divIcon({
+        className: '',
+        html: '<div style="width:20px;height:20px;background:#EF4444;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>',
+        iconSize: [20,20], iconAnchor: [10,10]
+    })
+}).addTo(detailMap).bindPopup(`<b>{{ complaint.title }}</b>`).openPopup();
+</script>
+{% endblock %}

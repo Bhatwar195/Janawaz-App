@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Janawaz – Your City, Your Voice{% endblock %}
+{% block content %}
+
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">Your City.<br>Your Voice.</h1>
+        <p class="hero-subtitle">Report civic issues, track resolutions, and hold your city accountable — together.</p>
+        <div class="hero-actions">
+            {% if current_user %}
+            <a href="/report" class="btn btn-primary btn-lg">Report an Issue</a>
+            <a href="/map" class="btn btn-outline btn-lg">View Live Map</a>
+            {% else %}
+            <a href="/register" class="btn btn-primary btn-lg">Get Started</a>
+            <a href="/map" class="btn btn-outline btn-lg">View Live Map</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="hero-visual">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ total }}</div>
+                <div class="stat-label">Total Reports</div>
+            </div>
+            <div class="stat-card stat-green">
+                <div class="stat-number">{{ resolved }}</div>
+                <div class="stat-label">Resolved</div>
+            </div>
+            <div class="stat-card stat-yellow">
+                <div class="stat-number">{{ in_progress }}</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+            <div class="stat-card stat-red">
+                <div class="stat-number">{{ pending }}</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="categories-section">
+    <div class="section-container">
+        <h2 class="section-title">What can you report?</h2>
+        <div class="categories-grid">
+            <div class="category-card">
+                <div class="cat-icon cat-road"><i class="fas fa-road"></i></div>
+                <span>Potholes</span>
+            </div>
+            <div class="category-card">
+                <div class="cat-icon cat-trash"><i class="fas fa-trash-alt"></i></div>
+                <span>Garbage</span>
+            </div>
+            <div class="category-card">
+                <div class="cat-icon cat-water"><i class="fas fa-tint"></i></div>
+                <span>Water Issues</span>
+            </div>
+            <div class="category-card">
+                <div class="cat-icon cat-electric"><i class="fas fa-bolt"></i></div>
+                <span>Electricity</span>
+            </div>
+            <div class="category-card">
+                <div class="cat-icon cat-other"><i class="fas fa-tools"></i></div>
+                <span>Other</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="map-preview-section">
+    <div class="section-container">
+        <div class="section-header">
+            <h2 class="section-title">Live Issue Map</h2>
+            <a href="/map" class="btn btn-sm btn-outline">View Full Map</a>
+        </div>
+        <div id="homeMap" class="map-preview"></div>
+    </div>
+</section>
+
+<section class="trending-section">
+    <div class="section-container">
+        <h2 class="section-title">Trending Issues</h2>
+        {% if trending %}
+        <div class="issues-grid">
+            {% for complaint in trending %}
+            <div class="issue-card">
+                <div class="issue-card-header">
+                    <span class="issue-category cat-badge cat-{{ complaint.category|lower|replace(' ','') }}">{{ complaint.category }}</span>
+                    <span class="issue-status status-{{ complaint.status|lower|replace(' ','-') }}">{{ complaint.status }}</span>
+                </div>
+                {% if complaint.image_filename %}
+                <img src="{{ complaint.resolve_image_url() }}" alt="Issue" class="issue-card-img">
+                {% else %}
+                <div class="issue-card-no-img"><i class="fas fa-image"></i></div>
+                {% endif %}
+                <div class="issue-card-body">
+                    <h3 class="issue-card-title">{{ complaint.title }}</h3>
+                    <p class="issue-card-desc">{{ complaint.description[:100] }}{% if complaint.description|length > 100 %}...{% endif %}</p>
+                    <div class="issue-card-meta">
+                        <span><i class="fas fa-map-marker-alt"></i> {{ complaint.address[:40] if complaint.address else 'Location recorded' }}</span>
+                        <span><i class="fas fa-fire"></i> {{ complaint.public_pressure_score }} pressure</span>
+                    </div>
+                    <div class="issue-card-footer">
+                        <span class="upvote-count"><i class="fas fa-arrow-up"></i> {{ complaint.upvote_count() }} upvotes</span>
+                        <a href="/complaint/{{ complaint.id }}" class="btn btn-sm btn-primary">View</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <p>No issues reported yet. Be the first to report!</p>
+            <a href="/report" class="btn btn-primary">Report Now</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="how-section">
+    <div class="section-container">
+        <h2 class="section-title">How Janawaz Works</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <h3>Report</h3>
+                <p>Snap a photo, add location and description. Your report is live instantly.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <h3>Cluster</h3>
+                <p>Our ML engine auto-groups nearby duplicate reports to amplify the signal.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <h3>Pressure</h3>
+                <p>Upvote issues you care about. Higher pressure scores get priority attention.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">4</div>
+                <h3>Resolve</h3>
+                <p>Track status updates from Pending to In Progress to Resolved.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const homeMap = L.map('homeMap', { zoomControl: true, scrollWheelZoom: false });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(homeMap);
+
+fetch('/api/issues')
+    .then(r => r.json())
+    .then(issues => {
+        const statusColors = { 'Pending': '#EF4444', 'In Progress': '#F59E0B', 'Resolved': '#10B981' };
+        const markers = [];
+        issues.forEach(issue => {
+            const color = statusColors[issue.status] || '#6B7280';
+            const icon = L.divIcon({
+                className: '',
+                html: `<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3)"></div>`,
+                iconSize: [14, 14]
+            });
+            const marker = L.marker([issue.latitude, issue.longitude], { icon })
+                .bindPopup(`<b>${issue.title}</b><br><small>${issue.status}</small>`);
+            marker.addTo(homeMap);
+            markers.push(marker);
+        });
+        if (markers.length > 0) {
+            const group = new L.featureGroup(markers);
+            homeMap.fitBounds(group.getBounds().pad(0.2));
+        } else {
+            homeMap.setView([18.5204, 73.8567], 12);
+        }
+    })
+    .catch(() => homeMap.setView([18.5204, 73.8567], 12));
+</script>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Report an Issue – Janawaz{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-exclamation-triangle"></i> Report a Civic Issue</h1>
+        <p>Help improve your city by reporting problems in your area.</p>
+    </div>
+    <div class="report-layout">
+        <div class="report-form-card">
+            <form method="POST" action="/report" enctype="multipart/form-data" class="report-form" id="reportForm">
+                <div class="form-section">
+                    <h3 class="form-section-title">Issue Details</h3>
+                    <div class="form-group">
+                        <label for="title">Issue Title <span class="required">*</span></label>
+                        <input type="text" id="title" name="title" placeholder="e.g. Large pothole on MG Road" required maxlength="200">
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category <span class="required">*</span></label>
+                        <select id="category" name="category" required>
+                            <option value="">Select a category</option>
+                            <option value="Pothole">Pothole</option>
+                            <option value="Garbage">Garbage / Waste</option>
+                            <option value="Water Issue">Water Issue</option>
+                            <option value="Electricity">Electricity Problem</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description <span class="required">*</span></label>
+                        <textarea id="description" name="description" rows="4" placeholder="Describe the issue in detail — size, severity, how long it has existed, etc." required></textarea>
+                        <span class="char-count" id="charCount">0 / 500</span>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h3 class="form-section-title">Photo Evidence</h3>
+                    <div class="form-group">
+                        <label for="image">Upload Image</label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <input type="file" id="image" name="image" accept="image/*" class="file-input">
+                            <div class="file-upload-content" id="fileUploadContent">
+                                <i class="fas fa-camera"></i>
+                                <p>Click to upload or drag &amp; drop</p>
+                                <span>PNG, JPG, GIF up to 16MB</span>
+                            </div>
+                            <img id="imagePreview" src="" alt="Preview" style="display:none; max-height:200px; border-radius:8px; margin-top:0.5rem;">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h3 class="form-section-title">Location</h3>
+                    <div class="location-actions">
+                        <button type="button" class="btn btn-outline btn-sm" id="getLocationBtn">
+                            <i class="fas fa-crosshairs"></i> Use My Location
+                        </button>
+                        <span class="location-hint">or click on the map below</span>
+                    </div>
+                    <div id="locationStatus" class="location-status" style="display:none;"></div>
+                    <div id="reportMap" class="report-map"></div>
+                    <div id="addressDisplay" class="address-display" style="display:none;">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="addressText"></span>
+                    </div>
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+                    <input type="hidden" id="address" name="address">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <i class="fas fa-paper-plane"></i> Submit Report
+                    </button>
+                    <a href="/" class="btn btn-ghost btn-lg">Cancel</a>
+                </div>
+            </form>
+        </div>
+        <div class="report-sidebar">
+            <div class="tips-card">
+                <h4><i class="fas fa-lightbulb"></i> Reporting Tips</h4>
+                <ul>
+                    <li>Include a clear photo of the issue</li>
+                    <li>Be specific in your description</li>
+                    <li>Pin the exact location on the map</li>
+                    <li>Mention how long the issue has existed</li>
+                    <li>Note if it's causing safety hazards</li>
+                </ul>
+            </div>
+            <div class="tips-card tips-card-info">
+                <h4><i class="fas fa-info-circle"></i> What happens next?</h4>
+                <p>Your report goes live on the public map immediately. Other citizens can upvote it, increasing the pressure score. High-pressure issues get escalated to city officials faster.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let reportMap = L.map('reportMap').setView([18.5204, 73.8567], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(reportMap);
+let pinMarker = null;
+
+function setPin(lat, lng) {
+    if (pinMarker) reportMap.removeLayer(pinMarker);
+    pinMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+            className: '',
+            html: '<div style="width:20px;height:20px;background:#EF4444;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+            iconSize: [20,20], iconAnchor: [10, 20]
+        })
+    }).addTo(reportMap);
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lng;
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+        .then(r => r.json())
+        .then(data => {
+            const addr = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            document.getElementById('address').value = addr;
+            document.getElementById('addressText').textContent = addr;
+            document.getElementById('addressDisplay').style.display = 'flex';
+        })
+        .catch(() => { document.getElementById('address').value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`; });
+}
+
+reportMap.on('click', e => setPin(e.latlng.lat, e.latlng.lng));
+
+document.getElementById('getLocationBtn').addEventListener('click', function() {
+    const status = document.getElementById('locationStatus');
+    status.style.display = 'flex';
+    status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting your location...';
+    status.className = 'location-status location-loading';
+    if (!navigator.geolocation) { status.innerHTML = '<i class="fas fa-times"></i> Geolocation not supported.'; status.className = 'location-status location-error'; return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        reportMap.setView([lat, lng], 17);
+        setPin(lat, lng);
+        status.innerHTML = '<i class="fas fa-check"></i> Location set successfully!';
+        status.className = 'location-status location-success';
+        setTimeout(() => status.style.display = 'none', 3000);
+    }, () => {
+        status.innerHTML = '<i class="fas fa-times"></i> Could not get location. Click on the map instead.';
+        status.className = 'location-status location-error';
+    });
+});
+
+document.getElementById('image').addEventListener('change', function() {
+    if (this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+            document.getElementById('fileUploadContent').style.display = 'none';
+        };
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+
+const desc = document.getElementById('description');
+desc.addEventListener('input', () => {
+    const count = desc.value.length;
+    const counter = document.getElementById('charCount');
+    counter.textContent = `${count} / 500`;
+    counter.style.color = count > 450 ? '#EF4444' : '';
+});
+
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('latitude').value) {
+        e.preventDefault();
+        alert('Please pin a location on the map or use "Use My Location".');
+    }
+});
+</script>
+{% endblock %}
