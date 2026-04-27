@@ -1,0 +1,20 @@
+# Render Blueprint — defines the web service configuration
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: janawaz
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true        # Render auto-generates a secure random value
+      - key: DATABASE_URL
+        sync: false                # You must set this manually from Neon
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false                # You must set this manually from Cloudinary
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
