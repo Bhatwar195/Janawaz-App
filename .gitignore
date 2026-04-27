@@ -1,0 +1,27 @@
+# Environment variables — NEVER commit to Git
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+
+# Local SQLite database (not used in production)
+*.db
+
+# Local uploads folder (replaced by Cloudinary in production)
+uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
