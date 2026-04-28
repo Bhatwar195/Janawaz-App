@@ -3,7 +3,8 @@
 A hyperlocal civic issue reporting platform where citizens can report problems like potholes, garbage, and water issues in their city. Built with FastAPI, PostgreSQL, and machine learning.
  
 ---
- 
+# Live Project link -https://janawaz-app.onrender.com
+---
 ## What It Does
  
 Citizens open the app, pin a location on the map, upload a photo, and submit a complaint. The platform clusters nearby duplicate reports using DBSCAN machine learning, calculates a public pressure score based on upvotes and complaint age, and tracks every issue through Pending, In Progress, and Resolved stages. City administrators manage everything from a protected admin panel.
